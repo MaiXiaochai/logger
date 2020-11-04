@@ -5,45 +5,64 @@
 @File       : logger.py
 @Author     : maixiaochai
 @Email      : maixiaochai@outlook.com
-@CreatedOn  : 2020/7/9 11:28
+@CreatedOn  : 2020-07-09 11:28
+@UpdatedOn  : 2020-11-04 16:18
 ---------------------------------------
 """
 
-from os.path import basename
+from os import makedirs
+from os.path import basename, exists
 from logging.handlers import RotatingFileHandler
-from logging import getLogger, StreamHandler, Formatter, DEBUG
-
-from .conf_parser import config
+from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO
 
 
-def __logger():
-    cfg = config()
+def log_handler(log_dir: str = None, filename: str = None, max_size: float = None, backup_count: int = None):
+    """
+    日志记录和打印
+    :param log_dir:         保存日志的目录
+    :param filename:        日志名称
+    :param max_size:        单个日志文件最大大小，单位 MB
+    :param backup_count:    备份日志的数量
+    """
+    # 默认值设置
+    default_log_dir = '.'
+    default_file_name = __name__
+    default_max_size = 10
+    default_backup_count = 10
+
+    # 处理参数值
+    log_dir = log_dir or default_log_dir
+    filename = filename or default_file_name
+    max_size = max_size or default_max_size
+    backup_count = backup_count or default_backup_count
+    max_size = max_size * 1024 ** 2
+
     logger = getLogger(basename(__file__))
 
-    # log 文件路径设置
-    log_file_name = cfg.get('log_file_name')
-    log_dir = cfg.get('log_dir')
-    log_number = int(cfg['log_number'])
-    log_size = float(cfg['log_size']) * 1024 ** 2
-
+    # 处理 log 文件保存目录的路径
+    log_dir = log_dir.replace("\\", '/') if "\\" in log_dir else log_dir
     log_dir = log_dir if log_dir.endswith("/") else log_dir + '/'
-    log_file_path = f"{log_dir}{log_file_name}"
+    log_file_path = "{}{}".format(log_dir, filename)
 
-    handler1 = StreamHandler()
-    handler2 = RotatingFileHandler(filename=log_file_path, maxBytes=log_size, backupCount=log_number, encoding="utf-8")
+    # log_dir 目录，如果不存在则创建
+    if not exists(log_dir):
+        makedirs(log_dir)
+
+    stream_handler = StreamHandler()
+    rotating_file_handler = RotatingFileHandler(
+        filename=log_file_path, maxBytes=max_size, backupCount=backup_count, encoding="utf-8")
 
     logger.setLevel(DEBUG)
-    handler1.setLevel(DEBUG)
-    handler2.setLevel(DEBUG)
+    stream_handler.setLevel(DEBUG)
+
+    # ≥ INFO级别才记录到文件
+    rotating_file_handler.setLevel(INFO)
 
     formatter = Formatter("[ %(asctime)s ][ %(levelname)s ][ %(filename)s:%(funcName)s ][ %(message)s ]")
-    handler1.setFormatter(formatter)
-    handler2.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
+    rotating_file_handler.setFormatter(formatter)
 
-    logger.addHandler(handler1)
-    logger.addHandler(handler2)
+    logger.addHandler(stream_handler)
+    logger.addHandler(rotating_file_handler)
 
     return logger
-
-
-log = __logger()

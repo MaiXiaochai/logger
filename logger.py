@@ -26,7 +26,7 @@ def log_handler(log_dir: str = None, filename: str = None, max_size: float = Non
     """
     # 默认值设置
     default_log_dir = '.'
-    default_file_name = __name__
+    default_file_name = 'test'
     default_max_size = 10
     default_backup_count = 10
 
@@ -37,7 +37,9 @@ def log_handler(log_dir: str = None, filename: str = None, max_size: float = Non
     backup_count = backup_count or default_backup_count
     max_size = max_size * 1024 ** 2
 
-    logger = getLogger(basename(__file__))
+    # 处理 log_file
+    suffix = '.log'
+    filename = filename if filename.endswith(suffix) else f"{filename}{suffix}"
 
     # 处理 log 文件保存目录的路径
     log_dir = log_dir.replace("\\", '/') if "\\" in log_dir else log_dir
@@ -48,20 +50,22 @@ def log_handler(log_dir: str = None, filename: str = None, max_size: float = Non
     if not exists(log_dir):
         makedirs(log_dir)
 
+    # 日志行格式
+    formatter = Formatter("[ %(asctime)s ][ %(levelname)s ][ %(filename)s:%(funcName)s:%(lineno)d ][ %(message)s ]")
+
     stream_handler = StreamHandler()
+    stream_handler.setLevel(DEBUG)
+    stream_handler.setFormatter(formatter)
+
     rotating_file_handler = RotatingFileHandler(
         filename=log_file_path, maxBytes=max_size, backupCount=backup_count, encoding="utf-8")
 
-    logger.setLevel(DEBUG)
-    stream_handler.setLevel(DEBUG)
-
     # ≥ INFO级别才记录到文件
     rotating_file_handler.setLevel(INFO)
-
-    formatter = Formatter("[ %(asctime)s ][ %(levelname)s ][ %(filename)s:%(funcName)s ][ %(message)s ]")
-    stream_handler.setFormatter(formatter)
     rotating_file_handler.setFormatter(formatter)
 
+    logger = getLogger(basename(__file__))
+    logger.setLevel(DEBUG)
     logger.addHandler(stream_handler)
     logger.addHandler(rotating_file_handler)
 
